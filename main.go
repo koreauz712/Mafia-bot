@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"math/rand"
-	"os"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -19,9 +18,7 @@ var players []Player
 
 func main() {
 
-	token := os.Getenv("BOT_TOKEN")
-
-	bot, err := tgbotapi.NewBotAPI(token)
+	bot, err := tgbotapi.NewBotAPI("8260077131:AAE66L2kNNoMAvQCDh3cfNd2X8KV9lfifNM")
 	if err != nil {
 		log.Panic(err)
 	}
@@ -47,9 +44,24 @@ func main() {
 
 		case "/start":
 			send(bot, msg.Chat.ID,
-				"Welcome to Mafia Bot!")
+				"🎭 Mafia Botga xush kelibsiz!\n\n/join - oyinga qo‘shilish\n/begin - o‘yinni boshlash")
 
 		case "/join":
+
+			alreadyJoined := false
+
+			for _, p := range players {
+				if p.ID == msg.From.ID {
+					alreadyJoined = true
+					break
+				}
+			}
+
+			if alreadyJoined {
+				send(bot, msg.Chat.ID,
+					"❌ Siz allaqachon qo‘shilgansiz")
+				continue
+			}
 
 			player := Player{
 				ID:   msg.From.ID,
@@ -59,13 +71,29 @@ func main() {
 			players = append(players, player)
 
 			send(bot, msg.Chat.ID,
-				msg.From.FirstName+" joined the game")
+				"✅ "+msg.From.FirstName+" oyinga qo‘shildi")
+
+		case "/players":
+
+			if len(players) == 0 {
+				send(bot, msg.Chat.ID,
+					"Hech kim qo‘shilmagan")
+				continue
+			}
+
+			text := "👥 Playerlar:\n\n"
+
+			for i, p := range players {
+				text += string(rune(i+1+'0')) + ". " + p.Name + "\n"
+			}
+
+			send(bot, msg.Chat.ID, text)
 
 		case "/begin":
 
 			if len(players) < 3 {
 				send(bot, msg.Chat.ID,
-					"Need at least 3 players")
+					"❌ Kamida 3 player kerak")
 				continue
 			}
 
@@ -74,26 +102,37 @@ func main() {
 			for i := range players {
 
 				if i == mafiaIndex {
-					players[i].Role = "Mafia"
+					players[i].Role = "🔫 Mafia"
 				} else {
-					players[i].Role = "Citizen"
+					players[i].Role = "🙂 Citizen"
 				}
 
 				privateMsg := tgbotapi.NewMessage(
 					players[i].ID,
-					"Your role: "+players[i].Role,
+					"🎭 Sizning rolingiz: "+players[i].Role,
 				)
 
 				bot.Send(privateMsg)
 			}
 
 			send(bot, msg.Chat.ID,
-				"Game started!")
+				"🎮 O‘yin boshlandi!\nRole private chatga yuborildi.")
+
+		case "/reset":
+
+			players = []Player{}
+
+			send(bot, msg.Chat.ID,
+				"♻️ Game reset qilindi")
 		}
 	}
 }
 
 func send(bot *tgbotapi.BotAPI, chatID int64, text string) {
 	msg := tgbotapi.NewMessage(chatID, text)
-	bot.Send(msg)
+	_, err := bot.Send(msg)
+
+	if err != nil {
+		log.Println(err)
+	}
 }
